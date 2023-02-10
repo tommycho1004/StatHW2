@@ -1,0 +1,168 @@
+---
+title: "HW2"
+author: "Tommy Cho"
+date: "2023-02-06"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Packages
+
+```{r}
+#libraries we need to use
+library(ggplot2)
+library(dplyr)
+library(moderndive)
+library(skimr)
+library(gapminder)
+```
+
+## Import Data
+
+```{r}
+
+#import csv
+USdf <- read.csv('USlifehistory.csv', header = TRUE)
+Worlddf <- read.csv('Worldlife100.csv', header = TRUE)
+```
+
+```{r}
+USdf['year'] <- USdf['year'] - 1880
+head(USdf)
+```
+### Life Expectancy in US
+
+## Historgram of life expectancy.
+# The histogram seems slightly left skewed with the mode being 70 years of age as the most common throughout the years.
+```{r}
+ggplot(data = USdf, mapping=aes(x=life_expectancy)) + geom_histogram(color="white")
+```
+## Scatterplot of life expectancy vs years
+# It seems like there is some sort of positive, linear relationship between year and life expectancy.
+```{r}
+ggplot(data = USdf,mapping = aes(x=year, y=life_expectancy)) + geom_point() + labs(x="Year", y="Life Exp")
+```
+
+## Unusual Points
+# There is an unusual point in 1917 and 2019. In 1917, there was a world-wide pandemic that probably affected these numbers and 2019 was one year before COVID-19 hit the United States, so perhaps an absence of data caused this unusual point.
+
+## Correlation between life expectancy and years since 1880. 
+# As years since 1880 increases, life expectancy also increases
+
+##Simple Regression
+#Since the p value is 0, we can say that this regression model is significant
+```{r}
+score_model1 <-lm(life_expectancy ~ year,data=USdf)
+get_regression_table(score_model1)
+```
+
+## Average life expectancy increase
+# The average life expectancy increase per year is 0.281 years
+
+## Life expectancy in 2023
+# Since it has been 143 years since 1880, 143*0.281+44.893 = 85.076 years
+
+## Residual Plot
+# The residual plot seems to be random up to a point and it goes between -5 to 5 usually. This is good for us because it means that the regression is sound and there are many cases where it doesn't accurately predict the exact life expectancy, but it comes pretty close to it.
+```{r}
+points1 <- get_regression_points(score_model1)
+points1
+ggplot(points1, aes(x=life_expectancy, y=residual)) + geom_point()
+ggplot(points1, aes(x=residual)) + geom_histogram(color="white")
+
+```
+
+## Percentage of total variability
+# It seems like 95.8% of the total variability in life expectancy can be explained by the linear model.
+```{r}
+points1 %>% mutate(squared_residuals = residual^2) %>%
+  summarize(sse1 = sum(squared_residuals))
+
+USdf %>% mutate(anyres_sq = (year - (5 + 0.1 * life_expectancy ))^2) %>% summarize (sse2=sum(anyres_sq))
+
+USdf %>% mutate(anyres_sq = (year - (5 - 0.1 * life_expectancy ))^2) %>% summarize (sse2=sum(anyres_sq))
+
+get_regression_summaries(score_model1)
+```
+
+### Life expectancy in the world
+
+## How many countries are there in each continent?
+# It seems like there are 50 in Africa, 24 in the Americas, 29 in Asia, 30 in Europe, and 2 in Oceania 
+```{r}
+ggplot(data=Worlddf,mapping=aes(x=continent)) + geom_bar()
+```
+
+## Side by side boxplot by continent in 1919
+# In 1919, Africa, the Americas, and Asia all had similar statistics in life expectancy with Americas having three major outliers. Europe's life expectancy was generally higher but also more spread out while Oceania enjoyed the greatest life expectancies of the world at that point in history.
+```{r}
+ggplot(data=Worlddf,mapping=aes(x=continent, y=life1919)) + geom_boxplot()
+```
+
+## Life expectancy by continent
+```{r}
+continents <- split(Worlddf, Worlddf$continent)
+
+ggplot(data = continents$Africa, mapping=aes(x=life1919)) + geom_histogram(color="white")
+ggplot(data = continents$Americas, mapping=aes(x=life1919)) + geom_histogram(color="white")
+ggplot(data = continents$Asia, mapping=aes(x=life1919)) + geom_histogram(color="white")
+ggplot(data = continents$Europe, mapping=aes(x=life1919)) + geom_histogram(color="white")
+ggplot(data = continents$Oceania, mapping=aes(x=life1919)) + geom_histogram(color="white")
+```
+
+## Summary of continents
+# 
+```{r}
+name <- c("Asia", "Americas", "Africa", "Europe", "Oceania")
+means <- c(mean(continents$Asia$life1919), mean(continents$Americas$life1919), mean(continents$Africa$life1919), mean(continents$Europe$life1919), mean(continents$Oceania$life1919))
+medians <- c(median(continents$Asia$life1919), median(continents$Americas$life1919), median(continents$Africa$life1919), median(continents$Europe$life1919), median(continents$Oceania$life1919))
+
+summ <- data.frame(name, means, medians)
+head(summ)
+```
+
+## Regression by continent
+# Estimated average life expectancies:
+# Asia: , Americas: , Africa: , Europe: , Oceania: 
+# 
+
+```{r}
+ggplot(data=Worlddf, aes(x = life1919, y = continent)) + geom_point() + geom_smooth(method="lm", se=FALSE)
+
+life_model2 <- lm(data=Worlddf, life1919 ~ continent)
+points2 <- get_regression_points(life_model2)
+
+ggplot(data=points2, aes(x=residual)) + geom_histogram(binwidth=1.5, color="white")
+
+ggplot(data=points2, aes(x=continent, y=residual)) + geom_point() + geom_hline(yintercept=0)
+
+ggplot(data=points2, aes(sample=residual)) + stat_qq() + stat_qq_line()
+
+table2<-get_regression_table(life_model2)
+table2 %>% select(term, estimate, statistic, p_value) %>% print
+
+summ2<-get_regression_summaries(life_model2)
+summ2 %>% select(r_squared, adj_r_squared) %>% print
+
+```
+
+## Rerun the regression with different reference levels
+```{r}
+continents$Asia <- with(Worlddf, ifelse(continent == 'Asia', 2, 0))
+continents$Africa <- with(Worlddf, ifelse(continent == 'Africa', 2, 0))
+continents$Americas <- with(Worlddf, ifelse(continent == 'Americas', 2, 0))
+continents$Europe <- with(Worlddf, ifelse(continent == 'Europe', 2, 0))
+continents$Oceania <- with(Worlddf, ifelse(continent == 'Oceania', 2, 0))
+``` 
+# Rerunning regression, results are statisically significant
+```{r}
+asiamodel<-lm(data=Worlddf,continents$Asia~life1919)
+get_regression_table(asiamodel)
+```
+## If we want to regroup the 5 levels in continent to have a new continent indicator, how will you regroup based on the output previously?
+
